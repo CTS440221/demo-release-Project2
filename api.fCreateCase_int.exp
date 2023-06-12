@@ -12,7 +12,7 @@ insert into FUNCTION_DEFN_HISTORY_R (
     DETERMINISTIC_IND_CODE, FUNCTION_DEFN_TXT
 ) values (
 /* ARCHIVE_ID */ 1, 
-/* FUNCTION_DEFN_ID */ 496639, 
+/* FUNCTION_DEFN_ID */ 73728738, 
 /* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
 /* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
 /* FUNCTION_DEFN_NAME */ 'api.fCreateCase&', 
@@ -154,7 +154,7 @@ api.fCreateCase&(const ControlInfo?{},
     }
     
     #Validate provided contact Id and customer Id related or not
-    if(is_defined(CBInputData${''PERSON_ID''}) && is_defined(CBInputData${''CUSTOMER_ID''}))
+    if(is_defined(CBInputData${''CASE_ID''}) && is_defined(CBInputData${''PERSON_ID''}) && is_defined(CBInputData${''CUSTOMER_ID''}))
     {
         # Loop through the associated contacts to find the provided contact and customer related or not
         for(index&:=0; index&<sizeof(allCustAcctContacts@[]); index&++)

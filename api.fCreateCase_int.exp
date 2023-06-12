@@ -208,8 +208,9 @@ api.fCreateCase&(const ControlInfo?{},
                       [Fact:Case.How_Received@], 
                       [ParamValue@(Parameter:howrec_InPhone@)]);
     } 
+    
                          
-    if(is_defined(CBInputData${''PERSON_ID''}) && !is_defined(CBInputData${''CUSTOMER_ID''}))
+    if(is_defined(CBInputData${''PERSON_ID''}) && !is_defined(CBInputData${''CUSTOMER_ID''}) && !is_defined(CBInputData${''CONTACT_ID''}))
     {
         # Creating association between Case and Contact if new case is created otherwise
         # updating contact details on provided case.

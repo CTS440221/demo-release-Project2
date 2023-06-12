@@ -1,0 +1,503 @@
+REM CB_VERSION = V11.00
+REM
+REM Table FUNCTION_DEFN_HISTORY_R
+REM
+insert into FUNCTION_DEFN_HISTORY_R (
+    ARCHIVE_ID, FUNCTION_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    FUNCTION_DEFN_NAME, INTERFACE_NR, DESCRIPTION, LAST_MODIFIED, 
+    ATLANTA_OPERATOR_ID, ATLANTA_GROUP_ID, DATA_TYPE_CODE, 
+    REMOTE_CALL_TYPE_CODE, REMOTE_NOTRANS_IND_CODE, REMOTE_NOTIME_IND_CODE, 
+    REMOTE_ALIAS_IND_CODE, REMOTE_QUEUESPACE_NAME, REMOTE_SERVICE_NAME, 
+    APPLICATION_ENV_CODE, CONTEXT_CODE, BUILTIN_FUNCTION_CODE, 
+    DETERMINISTIC_IND_CODE, FUNCTION_DEFN_TXT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* FUNCTION_DEFN_ID */ 496639, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* FUNCTION_DEFN_NAME */ 'api.fCreateCase&', 
+/* INTERFACE_NR */ 1, 
+/* DESCRIPTION */ 'Function for Case handling', 
+/* LAST_MODIFIED */ TO_DATE('15-09-2021 08:18:41','DD-MM-YYYY HH24:MI:SS'), 
+/* ATLANTA_OPERATOR_ID */ 11, 
+/* ATLANTA_GROUP_ID */ 6, 
+/* DATA_TYPE_CODE */ 0, 
+/* REMOTE_CALL_TYPE_CODE */ NULL, 
+/* REMOTE_NOTRANS_IND_CODE */ NULL, 
+/* REMOTE_NOTIME_IND_CODE */ NULL, 
+/* REMOTE_ALIAS_IND_CODE */ NULL, 
+/* REMOTE_QUEUESPACE_NAME */ NULL, 
+/* REMOTE_SERVICE_NAME */ NULL, 
+/* APPLICATION_ENV_CODE */ 7, 
+/* CONTEXT_CODE */ 0, 
+/* BUILTIN_FUNCTION_CODE */ NULL, 
+/* DETERMINISTIC_IND_CODE */ NULL, 
+/* FUNCTION_DEFN_TXT */ '#---------------------------------------------------------------------------
+#
+#   File:       api.fCreateCase&
+#   Created:    03-Jun-2020 11:47:18
+#   Creator:    bujroj01  (Rojabee Bujilannagari)
+#   $Revision: 1.1 $
+#   $Id: api.fCreateCase_int-1.exp,v 1.1 2023/04/26 16:29:59 soonming.kee Exp $
+#
+# ===========================================================================
+# COPYRIGHT (C) 2020 CSG SYSTEMS INTERNATIONAL, INC. AND/OR ITS 
+# AFFILIATES ("CSG INTERNATIONAL"). ALL RIGHTS RESERVED. THE INFORMATION
+# CONTAINED WITHIN THIS DOCUMENT OR APPLICATION IS THE PROPERTY OF CSG 
+# INTERNATIONAL, WHICH IS CONFIDENTIAL AND PROTECTED BY INTERNATIONAL 
+# COPYRIGHT LAWS AND ANY UNAUTHORISED USE OF THIS DOCUMENT OR APPLICATION 
+# OR ITS CONTENTS MAY VIOLATE COPYRIGHT, TRADEMARK, AND OTHER LAWS. NO 
+# PART OF THIS DOCUMENT OR APPLICATION MAY BE PHOTOCOPIED, REPRODUCED 
+# OR TRANSLATED IN ANY FORM OR BY ANY MEANS, OR STORED IN A RETRIEVAL 
+# SYSTEM OR TRANSMITTED ELECTRONICALLYOR OTHERWISE, WITHOUT THE PRIOR 
+# WRITTEN CONSENT OF CSG INTERNATIONAL.
+# ===========================================================================
+#
+# NAME:
+#   api.fCreateCase&
+#
+# DESCRIPTION:
+#   This function creates a Case for Contact and Customer provided.
+#
+#   If Customer and Contact id''s are not passed function returns the blank case
+#
+#   If only customer id is passed then fetches the primary contact of customer and
+#   creates case using that primary contact and customer.
+#
+#   If both the customer and contact id''s are passed then validates that the customer
+#   is related to contact or not, if not throwing error otherwise creating case using provided
+#   contact and customer id''s.
+#
+# PARAMETERS:
+#   ControlInfo?{} - Control information used to control the behaviour of
+#                    the common function framework. 
+#   CBInputData?{}  - Hash containing the input values required to create a case
+#                     in PE using PE facts as the hash keys.
+#   CBOutputData?{} - Any data that is populated needs to be passed back to the caller.
+#
+# RETURNS:
+#   Returns the Case object
+#
+# REVISION HISTORY:
+#   $Log: api.fCreateCase_int-1.exp,v $
+#   Revision 1.1  2023/04/26 16:29:59  soonming.kee
+#   [#14729] Remap to PERESTAPI id range
+#
+#   Revision 1.9  2022/03/18 05:31:09  sohkiow.goh
+#   [#13912] Remapping variable defn id
+#
+#   Revision 1.8  2022/03/18 04:15:24  sohkiow.goh
+#   [#13912] Remapping function defn id
+#
+#   Revision 1.7  2021/09/16 09:13:18  petale01
+#   [#13349] Changed the function from remote to local.
+#
+#   Revision 1.6  2021/09/15 14:06:01  petale01
+#   [#13566] Changed the function from remote to local.
+#
+#   Revision 1.5  2021/07/27 23:38:45  sohkiow.goh
+#   [#13442] Fixed invalid id range.
+#
+#   Revision 1.4  2021/07/27 00:49:45  tajsar01
+#   [#13349] Amend to api.fObjectFact function
+#
+#   Revision 1.3  2021/07/26 04:20:06  tajsar01
+#   [#13349] Amend perestapi to api prefix
+#
+#   Revision 1.2  2021/06/09 07:51:51  tajsar01
+#   [#13349] Remap to CBAPI id range
+#
+#   Revision 1.1  2021/06/09 05:08:05  tajsar01
+#   [#13349] Initial check in from perestapi v1.3
+#
+#   Revision 1.3  2020/11/06 13:00:24  vkage
+#   [#12930] Using Secure interfaces for ObjectInsert/ObjectUpdate/ObjectFactGet
+#
+#   Revision 1.1  2020/06/09 10:30:33  bujroj01
+#   [#12765] Initial Check-in
+#
+#---------------------------------------------------------------------------
+
+api.fCreateCase&(const ControlInfo?{},
+                   var CBInputData?{},
+                   var CBOutputData?{}) = {
+                           
+    # Get the Case type
+    const CASE_TYPE@ := ParamValue@(Parameter:casetyp_C@);
+        
+    # Variable Declarations
+    var contact@;
+    var custAcct@;
+    var caseContact@;
+    var allCustAcctContacts@[];
+    var assocContactId&;
+    var found& := FALSE;
+    var index&;
+    var case@;
+    var contactForCase&;
+    
+    # Get all associated contacts of provided customer
+    if(is_defined(CBInputData${''CUSTOMER_ID''}))
+    {
+        try
+        {
+            # Get the Customer object using the Customer Id
+            custAcct@ := to_objid@(ObjectKeyGet&(Class:Cust_Acct@), to_integer(CBInputData${''CUSTOMER_ID''}));
+            
+            # Get associated contacts of the customer
+            allCustAcctContacts@[] := api.fObjectFactGetSecure@[](custAcct@, Fact:Cust_Acct.All_CustAcctContactSorted_S@);
+        }
+        except
+        {
+            abort(error_number(), error_message());
+        }        
+    }
+    
+    #Validate provided contact Id and customer Id related or not
+    if(is_defined(CBInputData${''PERSON_ID''}) && is_defined(CBInputData${''CUSTOMER_ID''}))
+    {
+        # Loop through the associated contacts to find the provided contact and customer related or not
+        for(index&:=0; index&<sizeof(allCustAcctContacts@[]); index&++)
+        {
+            assocContactId& := api.fObjectFactGetSecure&(allCustAcctContacts@[index&], 
+                                              Fact:CustAcct_Contact.Contact@);
+                
+            if(assocContactId& = to_integer(CBInputData${''PERSON_ID''}))
+            {
+                found& := TRUE;
+                break;
+            }
+        }    
+                
+        if(!found&)
+        {
+            abort(''CBAPI_ELEMENT_MISMATCH'', 
+                  [''Customer Id'', CBInputData${''CUSTOMER_ID''},''Contact Id '', CBInputData${''PERSON_ID''}]);
+        }                  
+    }
+    
+    # Creating blank case if case details are there in input data
+    if(is_defined(CBInputData${''case''}{''ID''}))
+    {
+        try
+        {
+            # Getting Case object & contact for case
+            case@           := to_objid@(ObjectKeyGet&(Class:Case@), to_integer(CBInputData${''case''}{''ID''}));
+            contactForCase& := api.fObjectFactGetSecure&(case@, Fact:Case.ContactForCase_R@);
+        }
+        except
+        {
+            abort(''CBAPI_ENTITY_NOT_FOUND_OR_NO_ACCESS'', 
+                  [''case -> id'', CBInputData${''case''}{''ID''},ControlInfo${''ACTION''},ControlInfo${''ENTITY''}]);
+        }
+    }
+    else
+    {
+        # Create the blank case
+        case@ := ObjectInsertSecure@(Class:Case@,
+                                     [Fact:Case.Type@],
+                                     [CASE_TYPE@]);
+    }
+    
+    # Updating How_Received fact to default value in case of person and customer details
+    # are there in CB input data.
+    if(!is_defined(CBInputData${''PERSON_ID''}) && !is_defined(CBInputData${''CUSTOMER_ID''}))
+    {
+        # Updating fact to have current case as root object
+        ObjectUpdateSecure&(case@, 
+                      [Fact:Case.How_Received@], 
+                      [ParamValue@(Parameter:howrec_InPhone@)]);
+    } 
+                         
+    if(is_defined(CBInputData${''PERSON_ID''}) && !is_defined(CBInputData${''CUSTOMER_ID''}))
+    {
+        # Creating association between Case and Contact if new case is created otherwise
+        # updating contact details on provided case.
+        if(!is_defined(CBInputData${''case''}{''ID''}))
+        {
+            try
+            {
+                # Link the Case and Contact
+                caseContact@ := ObjectInsertSecure@(Class:Case_Contact@,
+                                                    [Fact:Case_Contact.Contact@,Fact:Case_Contact.Case@], 
+                                                    [to_integer(CBInputData${''PERSON_ID''}),case@]);   
+             
+                # Update the Case with Contact
+                ObjectUpdateSecure&(case@,
+                                    [Fact:Case.Contact_For_Case@],
+                                    [caseContact@]);
+            }
+            except
+            {
+                abort(error_number(), error_message());
+            }
+        }
+        else
+        {
+            if(is_defined(contactForCase&) && contactForCase& != to_integer(CBInputData${''PERSON_ID''}))
+            {
+                abort(''CBAPI_ELEMENT_MISMATCH'', 
+                     [''Contact for case ''+CBInputData${''case''}{''ID''}, contactForCase&,''Party id'',CBInputData${''PERSON_ID''}]);
+            }
+            
+            contact@ := ObjectGetByName@(Class:Contact@, 
+                                         Fact:Contact.XSID@, 
+                                         CBInputData${''PERSON_ID''});
+                                         
+            # Updating fact to have current case as root object
+            ObjectUpdateSecure&(case@, 
+                          [Fact:Case.ContactForCase_R@], 
+                          [contact@]);                                        
+        }
+    } 
+                                    
+    if(is_defined(CBInputData${''CUSTOMER_ID''}))
+    {
+        # Get the Customer object using the Customer Id
+        custAcct@ := to_objid@(ObjectKeyGet&(Class:Cust_Acct@), to_integer(CBInputData${''CUSTOMER_ID''}));
+        
+        if(!is_defined(CBInputData${''case''}{''ID''}))
+        {
+            try
+            {
+                # link between case and contact if person id is defined otherwise fetching primary contact of customer
+                # to create association between case and contact.
+                if(is_defined(CBInputData${''PERSON_ID''}))
+                {
+                    # Link the Case and Contact with provided Contact Id
+                    caseContact@ := ObjectInsertSecure@(Class:Case_Contact@,
+                                                        [Fact:Case_Contact.Contact@,Fact:Case_Contact.Case@], 
+                                                        [to_integer(CBInputData${''PERSON_ID''}),case@]);              
+                }
+                else
+                {
+                    # Get the Person object for the customer
+                    contact@ := api.fObjectFactGetSecure@(custAcct@, Fact:Cust_Acct.PrimaryContact_R@);
+            
+                    # Link the Case and Contact
+                    caseContact@ := ObjectInsertSecure@(Class:Case_Contact@,
+                                                        [Fact:Case_Contact.Contact@,Fact:Case_Contact.Case@], 
+                                                        [contact@,case@]);
+                }
+            
+                # Update Case with contact and customer
+                ObjectUpdateSecure&(case@,
+                              [Fact:Case.Contact_For_Case@, Fact:Case.Customer_Account_For_Case@],
+                              [caseContact@, custAcct@]);
+
+            }
+            except
+            { 
+                abort(error_number(), error_message());
+            }       
+        }
+        else
+        {
+            found& := FALSE;
+            if(is_defined(contactForCase&))
+            {
+                for(index&:=0; index&<sizeof(allCustAcctContacts@[]); index&++)
+                {
+                    assocContactId& := api.fObjectFactGetSecure&(allCustAcctContacts@[index&], 
+                                                      Fact:CustAcct_Contact.Contact@);
+                    if(assocContactId& = contactForCase&)
+                    {
+                        found& := TRUE;
+                        break;
+                    }
+                }
+                    
+                if(!found&)
+                {
+                     abort(''CBAPI_ELEMENT_MISMATCH'', 
+                           [''Contact for case ''+CBInputData${''case''}{''ID''}, 
+                            contactForCase&,CBInputData${''CUSTOMER_ID''}+'' Customer\''s '', ''Contact'']);
+                }
+            }
+            
+            # Update Case with customer
+            ObjectUpdateSecure&(case@,
+                          [Fact:Case.Customer_Account_For_Case@],
+                          [custAcct@]);            
+        }
+    }
+    
+    # Populating the input Case ID
+    CBInputData${''case''}{''ID''}     := to_string(ObjectKeyGet&(case@));
+    
+    # Populating the case output structure details. 
+    CBOutputData${''case''}{''ID''}     := CBInputData${''case''}{''ID''};
+    CBOutputData${''case''}{''NAME''}   := api.fObjectFactGetSecure$(case@, Fact:Case.Name@);    
+    CBOutputData?{''case''}{''STATUS''} := api.fObjectFactGetSecure$(case@, Fact:Case.Status@);
+    CBOutputData?{''case''}{''HREF''}   := api.fURLPath$(ControlInfo?{}, ''case'') + to_string(ObjectKeyGet&(case@));
+    
+    return TRUE;    
+
+}
+
+
+#
+#       End (of api.fCreateCase&)
+#
+');
+
+REM
+REM Table FUNCTION_DEFN_R
+REM
+insert into FUNCTION_DEFN_R (
+    ARCHIVE_ID, FUNCTION_DEFN_ID, VARIABLE_DEFN_ID, VERSION_STR, CATEGORIES
+) values (
+/* ARCHIVE_ID */ 1, 
+/* FUNCTION_DEFN_ID */ 496639, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* VERSION_STR */ 'perestapi:TEST_NODATE', 
+/* CATEGORIES */ NULL);
+
+REM
+REM Table VARIABLE_DEFN_DEPENDENCY_R
+REM
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 9011, 
+/* DEPENDENCY_COUNT */ 1);
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 9029, 
+/* DEPENDENCY_COUNT */ 1);
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 9248, 
+/* DEPENDENCY_COUNT */ 1);
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 9378, 
+/* DEPENDENCY_COUNT */ 1);
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 9380, 
+/* DEPENDENCY_COUNT */ 1);
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 9419, 
+/* DEPENDENCY_COUNT */ 1);
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 489041, 
+/* DEPENDENCY_COUNT */ 1);
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 489042, 
+/* DEPENDENCY_COUNT */ 1);
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 489044, 
+/* DEPENDENCY_COUNT */ 1);
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 489045, 
+/* DEPENDENCY_COUNT */ 1);
+insert into VARIABLE_DEFN_DEPENDENCY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, EFFECTIVE_START_DATE, EFFECTIVE_END_DATE, 
+    DEPENDENT_VARIABLE_DEFN_ID, DEPENDENCY_COUNT
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DEPENDENT_VARIABLE_DEFN_ID */ 489972, 
+/* DEPENDENCY_COUNT */ 1);
+
+REM
+REM Table VARIABLE_DEFN_HISTORY_R
+REM
+insert into VARIABLE_DEFN_HISTORY_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, VARIABLE_DEFN_NAME, LAST_MODIFIED, 
+    ATLANTA_OPERATOR_ID, ATLANTA_GROUP_ID, EFFECTIVE_START_DATE, 
+    EFFECTIVE_END_DATE, DATA_TYPE_CODE, VARIABLE_TYPE_CODE, CONTEXT_CODE, 
+    APPLICATION_ENV_CODE
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* VARIABLE_DEFN_NAME */ 'api.fCreateCase&', 
+/* LAST_MODIFIED */ TO_DATE('15-09-2021 08:18:41','DD-MM-YYYY HH24:MI:SS'), 
+/* ATLANTA_OPERATOR_ID */ NULL, 
+/* ATLANTA_GROUP_ID */ NULL, 
+/* EFFECTIVE_START_DATE */ TO_DATE('01-01-1900 00:00:00','DD-MM-YYYY HH24:MI:SS'), 
+/* EFFECTIVE_END_DATE */ TO_DATE('30-12-9999 23:59:59','DD-MM-YYYY HH24:MI:SS'), 
+/* DATA_TYPE_CODE */ 0, 
+/* VARIABLE_TYPE_CODE */ 4, 
+/* CONTEXT_CODE */ 0, 
+/* APPLICATION_ENV_CODE */ 7);
+
+REM
+REM Table VARIABLE_DEFN_R
+REM
+insert into VARIABLE_DEFN_R (
+    ARCHIVE_ID, VARIABLE_DEFN_ID, VERSION_STR, CATEGORIES
+) values (
+/* ARCHIVE_ID */ 1, 
+/* VARIABLE_DEFN_ID */ 489039, 
+/* VERSION_STR */ 'perestapi:TEST_NODATE', 
+/* CATEGORIES */ NULL);
+COMMIT;
+EXIT;
